@@ -1,0 +1,15 @@
+[submodule "Dependencies/GSL"]
+	path = Dependencies/GSL
+	url = https://github.com/Microsoft/GSL
+[submodule "Dependencies/boost"]
+	path = Dependencies/boost
+	url = https://github.com/boostorg/boost.git
+[submodule "Dependencies/cereal"]
+	path = Dependencies/cereal
+	url = https://github.com/USCiLab/cereal
+[submodule "Dependencies/eigen-git-mirror"]
+	path = Dependencies/eigen-git-mirror
+	url = https://github.com/eigenteam/eigen-git-mirror
+[submodule "Dependencies/g2o"]
+	path = Dependencies/g2o
+	url = https://github.com/RainerKuemmerle/g2o
