@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>MAGE-SLAM Fossil Visualizer</title>
+        <script src="https://cdn.babylonjs.com/babylon.max.js"></script>
+        <style>
+            html, body, canvas {
+                width: 100%;
+                height: 100%;
+                margin:0;
+                padding:0;
+                overflow: hidden;
+            }
+        </style>
+    </head>
+    <body>
+        <canvas id="renderCanvas" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);"></canvas>
+        <script>
+            var handleCsvLoaded;
+
+            window.addEventListener("DOMContentLoaded", function () {
+                var canvas = document.getElementById('renderCanvas');
+                var engine = new BABYLON.Engine(canvas, true);
+    
+                var createScene = async function () {
+                    var scene = new BABYLON.Scene(engine);
+                    scene.useRightHandedSystem = true;
+
+                    var camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), scene);
+                    camera.setTarget(BABYLON.Vector3.Zero());
+                    camera.attachControl(canvas, true);
+
+                    var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+                    light.intensity = 0.7;
+                    
+                    var sphere = BABYLON.MeshBuilder.CreateSphere("sphere", {diameter: 2, segments: 32}, scene);
+                    sphere.position.y = 1;
+                    var ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 6, height: 6}, scene);
+
+                    handleCsvLoaded = (text) => {
+                        for (var idx = scene.meshes.length - 1; idx >= 0; --idx) {
+                            scene.meshes[idx].dispose();
+                        };
+
+                        var parent = new BABYLON.TransformNode("frames_parent", scene);
+                        var lines = text.split('\n');
+                        var mat = new BABYLON.Matrix();
+                        for(var idx = 0 ; idx < lines.length ; ++idx) {
+                            var elems = lines[idx].split(',');
+                            if (elems[0] === "\"true\"") {
+                                mat.setRowFromFloats(0, elems[1],  elems[2],  elems[3],  elems[4]);
+                                mat.setRowFromFloats(1, elems[5],  elems[6],  elems[7],  elems[8]);
+                                mat.setRowFromFloats(2, elems[9],  elems[10], elems[11], elems[12]);
+                                mat.setRowFromFloats(3, elems[13], elems[14], elems[15], elems[16]);
+                                mat = mat.transpose().invert();
+                                
+                                var box = BABYLON.MeshBuilder.CreateBox("frame_" + ("000000" + idx).slice(-6), {size: 0.1}, engine.scenes[0]);
+                                mat.getTranslationToRef(box.position);
+                                box.rotationQuaternion = new BABYLON.Quaternion();
+                                box.rotationQuaternion.fromRotationMatrix(mat);
+
+                                box.parent = parent;
+                            }
+                        }
+
+                        parent.rotate(BABYLON.Vector3.Forward(), Math.PI);
+                    };
+
+                    scene.debugLayer.show();
+
+                    return scene;
+                }
+
+                createScene().then(function (scene) {
+                    engine.runRenderLoop(function(){
+                        scene.render();
+                    });
+                    window.addEventListener('resize', function(){
+                        engine.resize();
+                    });
+                });
+            });
+
+            var reader = new FileReader();
+            function dropHandler(ev) {
+                ev.preventDefault();
+                if (ev.dataTransfer.files.length > 0) {
+                    console.log(ev.dataTransfer.files[0]);
+                    reader.onloadend = () => {
+                        reader.onloadend = () => {};
+                        handleCsvLoaded(reader.result);
+                    };
+                    reader.readAsText(ev.dataTransfer.files[0]);
+                }
+            }
+
+            function dragOverHandler(ev) {
+                ev.preventDefault();
+            }
+        </script>
+    </body>
+</html>

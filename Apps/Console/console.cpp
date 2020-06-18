@@ -7,6 +7,53 @@
 
 #include <iostream>
 
+namespace
+{
+    constexpr auto INPUT_MP4 = "C:\\scratch\\video.mp4";
+    constexpr auto OUTPUT_CSV = "C:\\scratch\\mage_output.csv";
+
+    void ExportFossilCsv(const mage::MAGESlam::FossilizedMap& fossil, gsl::span<mage::FrameId> frameIds)
+    {
+        auto frames = fossil.GetTrackingResultsForFrames(frameIds);
+
+        std::ofstream file{ OUTPUT_CSV };
+        auto fileHandle = gsl::finally([&file]() { file.close(); });
+
+        for (const auto& frame : frames)
+        {
+            if (frame)
+            {
+                file << "\"true\",";
+
+                const auto& pose = frame->Tracking.Pose;
+                file <<
+                    pose.M11 << "," <<
+                    pose.M12 << "," <<
+                    pose.M13 << "," <<
+                    pose.M14 << "," <<
+                    pose.M21 << "," <<
+                    pose.M22 << "," <<
+                    pose.M23 << "," <<
+                    pose.M24 << "," <<
+                    pose.M31 << "," <<
+                    pose.M32 << "," <<
+                    pose.M33 << "," <<
+                    pose.M34 << "," <<
+                    pose.M41 << "," <<
+                    pose.M42 << "," <<
+                    pose.M43 << "," <<
+                    pose.M44;
+            }
+            else
+            {
+                file << "\"false\",1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1";
+            }
+
+            file << std::endl;
+        }
+    }
+}
+
 void ProcessFrames(const char* videoFileName, std::function<void(const cv::Mat& frame)> processFunction)
 {
     cv::namedWindow("Video", CV_WINDOW_AUTOSIZE);
@@ -256,9 +303,9 @@ void main()
     auto slam = std::make_unique<mage::MAGESlam>(settings, configurations, imuCharacterization);
 
     std::vector<float> distortionCoefficients(5, 0);
-    distortionCoefficients[0] = 0.094;
-    distortionCoefficients[1] = -0.35;
-    distortionCoefficients[2] = 0.42;
+    distortionCoefficients[0] = 0.094f;
+    distortionCoefficients[1] = -0.35f;
+    distortionCoefficients[2] = 0.42f;
     mage::calibration::LinearFocalLengthModel model{ 
         mage::calibration::Line{ -0.000111f, 0.81878f },
         mage::calibration::Line{ -0.000188f, 1.4517f },
@@ -273,12 +320,13 @@ void main()
     mira::CameraSettings cameraSettings{};
 
     uint64_t idx = 0;
+    std::vector<mage::FrameId> frameIds{};
 
-    ProcessFrames("C:\\scratch\\video.mp4", [&](cv::Mat mat)
+    ProcessFrames(INPUT_MP4, [&](cv::Mat mat)
     {
         std::chrono::system_clock::time_point timePoint{ std::chrono::milliseconds(33 * idx) };
-        mage::FrameId frameId{ idx++, mage::CameraIdentity::MONO };
-        mage::MAGESlam::FrameFormat format{ frameId, cameraModel, timePoint, cameraSettings };
+        frameIds.emplace_back(idx++, mage::CameraIdentity::MONO);
+        mage::MAGESlam::FrameFormat format{ frameIds.back(), cameraModel, timePoint, cameraSettings };
 
         auto pixels = gsl::make_span<uint8_t>(mat.data, mat.rows * mat.cols);
         
@@ -289,4 +337,5 @@ void main()
     });
     
     auto fossil = mage::MAGESlam::Fossilize(std::move(slam));
+    ExportFossilCsv(*fossil, frameIds);
 }
