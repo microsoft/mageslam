@@ -45,6 +45,7 @@
                         var parent = new BABYLON.TransformNode("frames_parent", scene);
                         var lines = text.split('\n');
                         var mat = new BABYLON.Matrix();
+                        var box, firstBox;
                         for(var idx = 0 ; idx < lines.length ; ++idx) {
                             var elems = lines[idx].split(',');
                             if (elems[0] === "\"true\"") {
@@ -54,7 +55,13 @@
                                 mat.setRowFromFloats(3, elems[13], elems[14], elems[15], elems[16]);
                                 mat = mat.transpose().invert();
                                 
-                                var box = BABYLON.MeshBuilder.CreateBox("frame_" + ("000000" + idx).slice(-6), {size: 0.1}, engine.scenes[0]);
+                                if (firstBox === undefined) {
+                                    firstBox = BABYLON.MeshBuilder.CreateBox("frame_" + ("000000" + idx).slice(-6), {size: 0.1}, engine.scenes[0]);
+                                    box = firstBox;
+                                } else {
+                                    box = firstBox.createInstance("frame_" + ("000000" + idx).slice(-6));
+                                }
+
                                 mat.getTranslationToRef(box.position);
                                 box.rotationQuaternion = new BABYLON.Quaternion();
                                 box.rotationQuaternion.fromRotationMatrix(mat);
