@@ -166,7 +166,9 @@ namespace mage
         {
             mira::task<std::shared_ptr<const PoseEstimated>> estimationTask;
 
-            if (TrackingData.IsLost)
+            // Check history size alongside IsLost, workaround described in https://github.com/microsoft/mageslam/issues/11
+            const auto& trackLocalMapHistory = m_trackLocalMapWorker->GetHistory();
+            if (TrackingData.IsLost || trackLocalMapHistory.size() == 0)
             {
                 m_priorProvider->OnTrackingLost();
 
@@ -174,7 +176,7 @@ namespace mage
             }
             else
             {
-                estimationTask = m_priorProvider->GetPoseForTime(m_trackLocalMapWorker->GetHistory(), analyzed.Analyzed->GetTimeStamp())
+                estimationTask = m_priorProvider->GetPoseForTime(trackLocalMapHistory, analyzed.Analyzed->GetTimeStamp())
                     .then(m_runtimeDispatcher, Cancellation(), [analyzed, this](const Pose& pose)
                     {
                         auto estimated = m_poseEstimator->EstimatePose(analyzed, m_trackLocalMapWorker->GetHistory(), pose);
